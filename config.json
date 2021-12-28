@@ -1,0 +1,50 @@
+{
+  "threads": 2,
+  "name": "main",
+
+  "debugger": {
+    "enable": false,
+    "listen": "0.0.0.0:6060"
+  },
+
+  "logger": {
+    "level": 5,
+    "mode": "console",
+    "file": "D:\\Projects\\git\\miner-pool\\mp.log"
+  },
+
+  "redis": {
+    "url": "127.0.0.1:6379",
+    "password": "",
+    "prefix": "mp",
+    "poolSize": 10,
+    "database": 0
+  },
+
+  "proxy": {
+    "enabled": true,
+    "listen": "0.0.0.0:8008",
+    "timeout": "120s",
+    "maxConn": 1024,
+    "target": "0x000000007fffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+
+    "daemon": {
+      "hosts": "127.0.0.1",
+      "host": "192.168.198.21",
+      "port": 8545,
+      "portWs": 8546,
+      "notifyWorkUrl": "0.0.0.0:8107"
+    },
+
+    "policy": {}
+  },
+
+  "api": {
+    "enabled": true,
+    "listen": "0.0.0.0:8090"
+  },
+
+  "payouts": {
+
+  }
+}
