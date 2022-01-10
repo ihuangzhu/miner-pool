@@ -13,9 +13,15 @@ const (
 type Block struct {
 	tableName struct{} `pg:"blocks"`
 
+<<<<<<< Updated upstream
 	Id                uint64    `pg:"id"`
 	Block             uint64    `pg:"block"`
 	NetworkDifficulty string    `pg:"network_difficulty"`
+=======
+	Id                uint64    `pg:"id,pk"`
+	Block             uint64    `pg:"block"`
+	NetworkDifficulty float64   `pg:"network_difficulty"`
+>>>>>>> Stashed changes
 	Miner             string    `pg:"miner"`
 	Worker            string    `pg:"worker"`
 	Nonce             string    `pg:"nonce"`

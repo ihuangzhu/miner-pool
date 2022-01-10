@@ -4,10 +4,13 @@ import (
 	"bufio"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"math/big"
 	"miner-pool/jsonrpc"
+	"miner-pool/model"
 	"miner-pool/util"
 	"net"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -17,10 +20,13 @@ const MaxReqSize = 1024
 var jsonRpcPattern = regexp.MustCompile("({[^}]+})+")
 
 type Proxy struct {
+<<<<<<< Updated upstream
 	server *Server
+=======
+	svr *Server
+>>>>>>> Stashed changes
 
 	sender   *Sender
-	daemon   *Daemon
 	receiver *Receiver
 	timeout  time.Duration
 	listener *net.TCPListener
@@ -35,13 +41,22 @@ type Proxy struct {
 	sessions   map[*Session]struct{}
 }
 
-func NewProxy(server *Server) *Proxy {
+func NewProxy(svr *Server) *Proxy {
 	p := &Proxy{
+<<<<<<< Updated upstream
 		server: server,
 
 		sender:  NewSender(server.cfg.Proxy),
 		daemon:  NewDaemon(server.cfg.Proxy.Daemon),
 		timeout: util.MustParseDuration(*server.cfg.Proxy.Timeout),
+=======
+		svr: svr,
+
+		sender:  NewSender(svr.cfg.Proxy),
+		timeout: util.MustParseDuration(*svr.cfg.Proxy.Timeout),
+
+		stateInterval: util.MustParseDuration(*svr.cfg.Proxy.StateInterval),
+>>>>>>> Stashed changes
 
 		stateInterval: util.MustParseDuration(*server.cfg.Proxy.StateInterval),
 
@@ -61,7 +76,7 @@ func NewProxy(server *Server) *Proxy {
 func (p *Proxy) listen() {
 	defer p.wg.Done()
 
-	addr, err := net.ResolveTCPAddr("tcp", *p.server.cfg.Proxy.Listen)
+	addr, err := net.ResolveTCPAddr("tcp", *p.svr.cfg.Proxy.Listen)
 	if err != nil {
 		log.Fatalf("Proxy listen err: %v", err)
 	}
@@ -71,8 +86,8 @@ func (p *Proxy) listen() {
 		log.Fatalf("Proxy listen tcp err: %v", err)
 	}
 
-	log.Infof("Proxy listening on %s", *p.server.cfg.Proxy.Listen)
-	var accept = make(chan int, *p.server.cfg.Proxy.MaxConn)
+	log.Infof("Proxy listening on %s", *p.svr.cfg.Proxy.Listen)
+	var accept = make(chan int, *p.svr.cfg.Proxy.MaxConn)
 	n := 0
 
 	for {
@@ -189,6 +204,7 @@ func (p *Proxy) handleConnection(ss *Session) error {
 
 func (p *Proxy) persistenceState() {
 	work := p.sender.LastWork
+<<<<<<< Updated upstream
 	block := util.Hex2uint64(work[3])
 	networkDifficulty := util.Target2diff(work[2])
 	miners := len(p.sessions)
@@ -196,6 +212,61 @@ func (p *Proxy) persistenceState() {
 
 
 
+=======
+	if work == nil {
+		return
+	}
+
+	var miners []struct {
+		Miner      string
+		Difficulty float64
+	}
+	tenMinutesAgo := time.Now().Add(-600 * time.Second)
+	err := p.svr.postgres.db.Model((*model.Share)(nil)).
+		Column("miner").
+		ColumnExpr("SUM(\"difficulty\") AS difficulty").
+		Where("created_at >= ?", tenMinutesAgo).
+		Group("miner").
+		Select(&miners)
+	if err != nil {
+		log.Infof("Failed to get share from backend: %v", err)
+		return
+	}
+
+	var poolDifficulty float64
+	for _, v := range miners {
+		poolDifficulty += v.Difficulty
+
+		var miner model.Miner
+		err := p.svr.postgres.db.Model(&miner).Where("miner = ?", v.Miner).First()
+		if err != nil {
+			log.Errorf("Failed to get share from backend: %v", err)
+			return
+		}
+
+		diff, _ := big.NewFloat(v.Difficulty).Int64()
+		miner.Hashrate = new(big.Int).Div(big.NewInt(diff), big.NewInt(600)).String()
+		if _, err := p.svr.postgres.db.Model(&miner).WherePK().Update(); err != nil {
+			log.Errorf("Failed to update miner's hashrate: %v", err)
+			return
+		}
+	}
+
+	poolDiff, _ := big.NewFloat(poolDifficulty).Int64()
+	poolHashrate := new(big.Int).Div(big.NewInt(poolDiff), big.NewInt(600))
+
+	block := util.Hex2uint64(work[3])
+	networkDifficulty := util.Target2diff(work[2])
+	networkHashrate, _ := p.svr.daemon.GetNetworkHashrate(600)
+
+	p.svr.postgres.WriteState(&model.Pool{
+		Miners:            uint32(len(p.sessions)),
+		Block:             block,
+		PoolHashrate:      poolHashrate.String(),
+		NetworkHashrate:   strconv.FormatUint(networkHashrate, 10),
+		NetworkDifficulty: networkDifficulty.String(),
+	})
+>>>>>>> Stashed changes
 }
 
 func (p *Proxy) registerSession(ss *Session) {

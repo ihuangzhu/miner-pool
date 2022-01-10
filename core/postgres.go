@@ -47,7 +47,11 @@ func (p *Postgres) MinerLogin(wallet string, worker string) (*model.Miner, error
 	// 查询用户
 	var miner model.Miner
 	wallet = strings.ToLower(wallet)
+<<<<<<< Updated upstream
 	if err := p.db.Model(&miner).Where("miner = ? and worker = ?", wallet, worker).Select(); err != nil {
+=======
+	if err := p.db.Model(&miner).Where("miner = ? and worker = ?", wallet, worker).First(); err != nil {
+>>>>>>> Stashed changes
 		if err == pg.ErrNoRows {
 			miner.Miner = wallet
 			miner.Worker = worker
@@ -110,3 +114,19 @@ func (p *Postgres) WriteBlock(share *model.Share, block *model.Block) error {
 		return nil
 	})
 }
+<<<<<<< Updated upstream
+=======
+
+func (p *Postgres) WriteState(pool *model.Pool) error {
+	return p.db.RunInTransaction(p.ctx, func(tx *pg.Tx) error {
+
+		// 写入块数据
+		pool.CreatedAt = time.Now()
+		if _, err := tx.Model(pool).Insert(); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+>>>>>>> Stashed changes

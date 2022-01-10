@@ -11,6 +11,7 @@ import (
 	"miner-pool/jsonrpc"
 	"miner-pool/util"
 	"net/http"
+	"time"
 )
 
 type Daemon struct {
@@ -179,6 +180,7 @@ func (d *Daemon) GetTxReceipt(hash string) (*TransactionReceipt, error) {
 	return &txReceipt, nil
 }
 
+<<<<<<< Updated upstream
 // GetNetworkHashrate
 func (d *Daemon) GetNetworkHashrate(sampleSize uint64) (uint64, error) {
 	// 往前数块数
@@ -188,10 +190,18 @@ func (d *Daemon) GetNetworkHashrate(sampleSize uint64) (uint64, error) {
 
 	// 当前块信息
 	latestBlock, err := d.GetBlockByOption("latest")
+=======
+// GetNetworkHashrate Calculating hashrate of window in seconds
+func (d *Daemon) GetNetworkHashrate(window uint64) (uint64, error) {
+	// 最新块信息
+	endTimestamp := uint64(time.Now().Unix())
+	lastBlockNumber, err := d.BlockNumber()
+>>>>>>> Stashed changes
 	if err != nil {
 		return 0, err
 	}
 
+<<<<<<< Updated upstream
 	// 往前数块信息
 	latestBlockNumber := util.Hex2uint64(latestBlock.Number) // Save this value to atomically get a block number.
 	targetBlockNum := latestBlockNumber - sampleSize
@@ -207,6 +217,24 @@ func (d *Daemon) GetNetworkHashrate(sampleSize uint64) (uint64, error) {
 	difficulty := util.Hex2uint64(latestBlock.Difficulty) // You can sum up the last n-blocks and average; this is mathematically sound.
 
 	return difficulty / blockTime, nil
+=======
+	startTimestamp := endTimestamp
+	blockNumber := lastBlockNumber
+
+	// 往前推到指定时间
+	var difficulty uint64
+	for startTimestamp > endTimestamp-window {
+		targetBlock, _ := d.GetBlockByNumber(blockNumber)
+		startTimestamp = util.Hex2uint64(targetBlock.Time)
+		difficulty += util.Hex2uint64(targetBlock.Difficulty)
+
+		blockNumber--
+	}
+
+	// 计算难度
+	hashrate := difficulty / (endTimestamp - startTimestamp)
+	return hashrate, nil
+>>>>>>> Stashed changes
 }
 
 // StratumGetWork delegates to `eth_getWork` RPC method, and returns work

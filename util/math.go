@@ -69,3 +69,15 @@ func Target2diff(targetHex string) *big.Int {
 	}
 	return new(big.Int).Div(Pow256, new(big.Int).SetBytes(targetBytes))
 }
+
+func HashrateFormat(hashrate uint64) string {
+	i := 0
+	var units = []string{"H", "KH", "MH", "GH", "TH", "PH"}
+
+	for hashrate > 1000 {
+		hashrate = hashrate / 1000
+		i++
+	}
+
+	return fmt.Sprintf("%v %v", hashrate, units[i])
+}

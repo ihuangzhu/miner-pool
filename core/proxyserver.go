@@ -63,7 +63,7 @@ func (p *ProxyServer) Close() {
 	defer cancel()
 
 	if err := p.srv.Shutdown(ctx); err != nil {
-		log.Panicf("Shutdown(): %v", err) // failure/timeout shutting down the server gracefully
+		log.Panicf("Shutdown(): %v", err) // failure/timeout shutting down the svr gracefully
 	}
 
 	// wait for goroutine started in startHttpServer() to stop

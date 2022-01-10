@@ -7,8 +7,13 @@ type Share struct {
 	tableName struct{} `pg:"shares"`
 
 	Block             uint64    `pg:"block"`
+<<<<<<< Updated upstream
 	Difficulty        string    `pg:"difficulty"`
 	NetworkDifficulty string    `pg:"network_difficulty"`
+=======
+	Difficulty        float64   `pg:"difficulty"`
+	NetworkDifficulty float64   `pg:"network_difficulty"`
+>>>>>>> Stashed changes
 	Miner             string    `pg:"miner"`
 	Worker            string    `pg:"worker"`
 	Pow               string    `pg:"pow"`

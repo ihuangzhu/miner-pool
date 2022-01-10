@@ -21,7 +21,7 @@ type Receiver struct {
 func StartReceiver(proxy *Proxy) *Receiver {
 	r := &Receiver{
 		proxy: proxy,
-		srv:   &http.Server{Addr: *proxy.server.cfg.Proxy.Daemon.NotifyWorkUrl},
+		srv:   &http.Server{Addr: *proxy.svr.cfg.Proxy.Daemon.NotifyWorkUrl},
 	}
 	r.wg.Add(1)
 
@@ -68,7 +68,7 @@ func (r *Receiver) Close() {
 	defer cancel()
 
 	if err := r.srv.Shutdown(ctx); err != nil {
-		log.Panicf("Shutdown(): %v", err) // failure/timeout shutting down the server gracefully
+		log.Panicf("Shutdown(): %v", err) // failure/timeout shutting down the svr gracefully
 	}
 
 	// wait for goroutine started in startHttpServer() to stop
