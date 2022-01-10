@@ -7,15 +7,9 @@ require (
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.14
 	github.com/go-pg/pg/v10 v10.10.6 // indirect
-<<<<<<< Updated upstream
-	github.com/go-redis/redis/v8 v8.11.4
-=======
->>>>>>> Stashed changes
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.3.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 )
-
-replace github.com/ethereum/go-ethereum => github.com/ihuangzhu/go-ethereum v1.10.14-0.20211227061312-8d756c1aebb7

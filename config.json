@@ -18,17 +18,6 @@
     "database": "minerpool",
     "username": "minerpool",
     "password": "PAPCN7fcjjnJ"
-<<<<<<< Updated upstream
-  },
-
-  "redis": {
-    "url": "127.0.0.1:6379",
-    "password": "",
-    "prefix": "mp",
-    "poolSize": 10,
-    "database": 0
-=======
->>>>>>> Stashed changes
   },
 
   "proxy": {
@@ -37,14 +26,9 @@
     "timeout": "120s",
     "maxConn": 1024,
     "targets": "0x000000007fffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-<<<<<<< Updated upstream
-    "target": "0x0000002af31dc4611873bf3f70834acdae9f0f4f534f5d60585a5f1c1a3ced1b",
-    "stateInterval": "5m",
-=======
     "targetss": "0x0000002af31dc4611873bf3f70834acdae9f0f4f534f5d60585a5f1c1a3ced1b",
     "target": "0x0000002d54def2d8b891c1687030b442f96862e496fced25fee34342445c9e5d",
     "stateInterval": "1m",
->>>>>>> Stashed changes
 
     "daemon": {
       "hosts": "127.0.0.1",

@@ -53,11 +53,8 @@ func (ss *Session) HandleSubmitLogin(params []string, worker string) error {
 	}
 
 	// 矿工登录
-<<<<<<< Updated upstream
-	miner, err := ss.proxy.server.postgres.MinerLogin(wallet, worker)
-=======
+
 	miner, err := ss.proxy.svr.postgres.MinerLogin(wallet, worker)
->>>>>>> Stashed changes
 	if err != nil {
 		return errors.New("Miner login fail: " + err.Error())
 	}
@@ -112,11 +109,7 @@ func (ss *Session) HandleSubmitWork(params []string) error {
 	}
 
 	// 提交任务
-<<<<<<< Updated upstream
-	ok, err := ss.proxy.daemon.SubmitWork(params)
-=======
 	ok, err := ss.proxy.svr.daemon.SubmitWork(params)
->>>>>>> Stashed changes
 	if err != nil {
 		log.Debugf("Unable to submit mined block! work: %v", params)
 		return err
@@ -125,54 +118,32 @@ func (ss *Session) HandleSubmitWork(params []string) error {
 	difficulty, _ := new(big.Float).SetInt(share.Difficulty).Float64()
 	networkDifficulty, _ := new(big.Float).SetInt(util.Target2diff(fullWork[2])).Float64()
 	if !ok {
-<<<<<<< Updated upstream
-		ss.proxy.server.postgres.WriteShare(&model.Share{
-=======
 		ss.proxy.svr.postgres.WriteShare(&model.Share{
->>>>>>> Stashed changes
 			Block:             share.Number.Uint64(),
 			Miner:             ss.miner.Miner,
 			Worker:            ss.miner.Worker,
 			Pow:               strings.Join(params, ":"),
-<<<<<<< Updated upstream
-			Difficulty:        share.Difficulty.String(),
-			NetworkDifficulty: util.Target2diff(fullWork[2]).String(),
-=======
 			Difficulty:        difficulty,
 			NetworkDifficulty: networkDifficulty,
->>>>>>> Stashed changes
 		})
 
 		log.Debugf("Submitted block marked as invalid! work: %v", params)
 		return errors.New("Submit fail")
 	}
 
-<<<<<<< Updated upstream
-	ss.proxy.server.postgres.WriteBlock(&model.Share{
-=======
 	ss.proxy.svr.postgres.WriteBlock(&model.Share{
->>>>>>> Stashed changes
 		Block:             share.Number.Uint64(),
 		Miner:             ss.miner.Miner,
 		Worker:            ss.miner.Worker,
 		Pow:               strings.Join(params, ":"),
-<<<<<<< Updated upstream
-		Difficulty:        share.Difficulty.String(),
-		NetworkDifficulty: util.Target2diff(fullWork[2]).String(),
-=======
 		Difficulty:        difficulty,
 		NetworkDifficulty: networkDifficulty,
->>>>>>> Stashed changes
 	}, &model.Block{
 		Block:             share.Number.Uint64(),
 		Miner:             ss.miner.Miner,
 		Worker:            ss.miner.Worker,
 		Nonce:             params[0],
-<<<<<<< Updated upstream
-		NetworkDifficulty: util.Target2diff(fullWork[2]).String(),
-=======
 		NetworkDifficulty: networkDifficulty,
->>>>>>> Stashed changes
 		Status:            model.BlockStatusPending,
 	})
 

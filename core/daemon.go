@@ -180,44 +180,15 @@ func (d *Daemon) GetTxReceipt(hash string) (*TransactionReceipt, error) {
 	return &txReceipt, nil
 }
 
-<<<<<<< Updated upstream
-// GetNetworkHashrate
-func (d *Daemon) GetNetworkHashrate(sampleSize uint64) (uint64, error) {
-	// 往前数块数
-	if sampleSize == 0 {
-		sampleSize = 3800
-	}
-
-	// 当前块信息
-	latestBlock, err := d.GetBlockByOption("latest")
-=======
 // GetNetworkHashrate Calculating hashrate of window in seconds
 func (d *Daemon) GetNetworkHashrate(window uint64) (uint64, error) {
 	// 最新块信息
 	endTimestamp := uint64(time.Now().Unix())
 	lastBlockNumber, err := d.BlockNumber()
->>>>>>> Stashed changes
 	if err != nil {
 		return 0, err
 	}
 
-<<<<<<< Updated upstream
-	// 往前数块信息
-	latestBlockNumber := util.Hex2uint64(latestBlock.Number) // Save this value to atomically get a block number.
-	targetBlockNum := latestBlockNumber - sampleSize
-	targetBlock, err := d.GetBlockByNumber(targetBlockNum)
-	if err != nil {
-		return 0, err
-	}
-
-	// 计算网络难度
-	startTimestamp := util.Hex2uint64(latestBlock.Time)
-	endTimestamp := util.Hex2uint64(targetBlock.Time)
-	blockTime := (startTimestamp - endTimestamp) / sampleSize
-	difficulty := util.Hex2uint64(latestBlock.Difficulty) // You can sum up the last n-blocks and average; this is mathematically sound.
-
-	return difficulty / blockTime, nil
-=======
 	startTimestamp := endTimestamp
 	blockNumber := lastBlockNumber
 
@@ -234,7 +205,6 @@ func (d *Daemon) GetNetworkHashrate(window uint64) (uint64, error) {
 	// 计算难度
 	hashrate := difficulty / (endTimestamp - startTimestamp)
 	return hashrate, nil
->>>>>>> Stashed changes
 }
 
 // StratumGetWork delegates to `eth_getWork` RPC method, and returns work

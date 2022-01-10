@@ -20,11 +20,7 @@ const MaxReqSize = 1024
 var jsonRpcPattern = regexp.MustCompile("({[^}]+})+")
 
 type Proxy struct {
-<<<<<<< Updated upstream
-	server *Server
-=======
 	svr *Server
->>>>>>> Stashed changes
 
 	sender   *Sender
 	receiver *Receiver
@@ -43,22 +39,12 @@ type Proxy struct {
 
 func NewProxy(svr *Server) *Proxy {
 	p := &Proxy{
-<<<<<<< Updated upstream
-		server: server,
-
-		sender:  NewSender(server.cfg.Proxy),
-		daemon:  NewDaemon(server.cfg.Proxy.Daemon),
-		timeout: util.MustParseDuration(*server.cfg.Proxy.Timeout),
-=======
 		svr: svr,
 
 		sender:  NewSender(svr.cfg.Proxy),
 		timeout: util.MustParseDuration(*svr.cfg.Proxy.Timeout),
 
 		stateInterval: util.MustParseDuration(*svr.cfg.Proxy.StateInterval),
->>>>>>> Stashed changes
-
-		stateInterval: util.MustParseDuration(*server.cfg.Proxy.StateInterval),
 
 		quit: make(chan struct{}),
 
@@ -204,15 +190,6 @@ func (p *Proxy) handleConnection(ss *Session) error {
 
 func (p *Proxy) persistenceState() {
 	work := p.sender.LastWork
-<<<<<<< Updated upstream
-	block := util.Hex2uint64(work[3])
-	networkDifficulty := util.Target2diff(work[2])
-	miners := len(p.sessions)
-
-
-
-
-=======
 	if work == nil {
 		return
 	}
@@ -266,7 +243,6 @@ func (p *Proxy) persistenceState() {
 		NetworkHashrate:   strconv.FormatUint(networkHashrate, 10),
 		NetworkDifficulty: networkDifficulty.String(),
 	})
->>>>>>> Stashed changes
 }
 
 func (p *Proxy) registerSession(ss *Session) {
