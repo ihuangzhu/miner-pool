@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	log "github.com/sirupsen/logrus"
 	"miner-pool/ethash"
+	"miner-pool/model"
 	"miner-pool/util"
 	"strings"
 )
@@ -50,9 +51,14 @@ func (ss *Session) HandleSubmitLogin(params []string, worker string) error {
 		worker = "0"
 	}
 
+	// 矿工登录
+	miner, err := ss.proxy.server.postgres.MinerLogin(wallet, worker)
+	if err != nil {
+		return errors.New("Miner login fail: " + err.Error())
+	}
+
 	// 设置矿工
-	ss.worker = worker
-	ss.wallet = strings.ToLower(wallet)
+	ss.miner = miner
 
 	// 注册会话
 	ss.proxy.registerSession(ss)
@@ -88,28 +94,53 @@ func (ss *Session) HandleSubmitWork(params []string) error {
 		log.Warnf("Submit Stale Work")
 	}
 
-	header := types.Header{
-		Difficulty: util.Target2diff(fullWork[2]), // 原始任务难度
-		Number: hexutil.MustDecodeBig(fullWork[3]),
-		Nonce: types.EncodeNonce(util.Hex2uint64(params[0])),
-		MixDigest: common.HexToHash(params[2]),
-	}
-
 	// 验证工作证明
-	if err := sharedEthash.VerifySeal(common.HexToHash(params[1]), &header, true); err != nil {
+	share := &types.Header{
+		Difficulty: util.Target2diff(ss.proxy.sender.WorkTarget), // 发布任务难度
+		Number:     hexutil.MustDecodeBig(fullWork[3]),
+		Nonce:      types.EncodeNonce(util.Hex2uint64(params[0])),
+		MixDigest:  common.HexToHash(params[2]),
+	}
+	if err := sharedEthash.VerifySeal(common.HexToHash(params[1]), share, true); err != nil {
 		log.Errorf("Invalid proof-of-work submitted, err: %v", err)
 		return err
 	}
 
+	// 提交任务
 	ok, err := ss.proxy.daemon.SubmitWork(params)
 	if err != nil {
 		log.Debugf("Unable to submit mined block! work: %v", params)
 		return err
 	}
 	if !ok {
+		ss.proxy.server.postgres.WriteShare(&model.Share{
+			Block:             share.Number.Uint64(),
+			Miner:             ss.miner.Miner,
+			Worker:            ss.miner.Worker,
+			Pow:               strings.Join(params, ":"),
+			Difficulty:        share.Difficulty.String(),
+			NetworkDifficulty: util.Target2diff(fullWork[2]).String(),
+		})
+
 		log.Debugf("Submitted block marked as invalid! work: %v", params)
 		return errors.New("Submit fail")
 	}
+
+	ss.proxy.server.postgres.WriteBlock(&model.Share{
+		Block:             share.Number.Uint64(),
+		Miner:             ss.miner.Miner,
+		Worker:            ss.miner.Worker,
+		Pow:               strings.Join(params, ":"),
+		Difficulty:        share.Difficulty.String(),
+		NetworkDifficulty: util.Target2diff(fullWork[2]).String(),
+	}, &model.Block{
+		Block:             share.Number.Uint64(),
+		Miner:             ss.miner.Miner,
+		Worker:            ss.miner.Worker,
+		Nonce:             params[0],
+		NetworkDifficulty: util.Target2diff(fullWork[2]).String(),
+		Status:            model.BlockStatusPending,
+	})
 
 	return nil
 }

@@ -17,13 +17,16 @@ const MaxReqSize = 1024
 var jsonRpcPattern = regexp.MustCompile("({[^}]+})+")
 
 type Proxy struct {
-	server  *Server
+	server *Server
 
 	sender   *Sender
 	daemon   *Daemon
 	receiver *Receiver
-	timeout time.Duration
+	timeout  time.Duration
 	listener *net.TCPListener
+
+	stateInterval time.Duration
+	stateTimer    *time.Timer
 
 	wg   sync.WaitGroup
 	quit chan struct{}
@@ -34,11 +37,13 @@ type Proxy struct {
 
 func NewProxy(server *Server) *Proxy {
 	p := &Proxy{
-		server:  server,
+		server: server,
 
-		sender: NewSender(server.cfg.Proxy),
-		daemon: NewDaemon(server.cfg.Proxy.Daemon),
+		sender:  NewSender(server.cfg.Proxy),
+		daemon:  NewDaemon(server.cfg.Proxy.Daemon),
 		timeout: util.MustParseDuration(*server.cfg.Proxy.Timeout),
+
+		stateInterval: util.MustParseDuration(*server.cfg.Proxy.StateInterval),
 
 		quit: make(chan struct{}),
 
@@ -46,6 +51,8 @@ func NewProxy(server *Server) *Proxy {
 	}
 	p.receiver = StartReceiver(p)
 
+	p.wg.Add(1)
+	go p.state()
 	p.wg.Add(1)
 	go p.listen()
 	return p
@@ -85,7 +92,7 @@ func (p *Proxy) listen() {
 
 			n += 1
 			accept <- n
-			ss := &Session{name: ip, conn: conn, proxy: p}
+			ss := &Session{ip: ip, proxy: p, conn: conn}
 			// 开启连接会话
 			p.wg.Add(1)
 			go func(ss *Session) {
@@ -96,6 +103,23 @@ func (p *Proxy) listen() {
 				p.wg.Done()
 				<-accept
 			}(ss)
+		}
+	}
+}
+
+func (p *Proxy) state() {
+	defer p.wg.Done()
+
+	p.stateTimer = time.NewTimer(p.stateInterval)
+
+	for {
+		select {
+		case <-p.quit:
+			return
+
+		case <-p.stateTimer.C:
+			p.persistenceState()
+			p.stateTimer.Reset(p.stateInterval)
 		}
 	}
 }
@@ -129,6 +153,7 @@ func (p *Proxy) handleConnection(ss *Session) error {
 
 			// 解析RPC请求数据
 			if len(data) > 0 {
+				log.Debugf("Request data: %v", string(data))
 				request, err := jsonrpc.UnmarshalRequest(data)
 				if err != nil {
 					// 有时会有两条json同时传递上来：{json1}{json2}
@@ -160,6 +185,17 @@ func (p *Proxy) handleConnection(ss *Session) error {
 			}
 		}
 	}
+}
+
+func (p *Proxy) persistenceState() {
+	work := p.sender.LastWork
+	block := util.Hex2uint64(work[3])
+	networkDifficulty := util.Target2diff(work[2])
+	miners := len(p.sessions)
+
+
+
+
 }
 
 func (p *Proxy) registerSession(ss *Session) {

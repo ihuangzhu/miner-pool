@@ -5,14 +5,18 @@ import (
 )
 
 type Server struct {
-	cfg   *config.Config
-	//redis *Redis
+	cfg      *config.Config
+	postgres *Postgres
+	//redis    *Redis
+
 	proxy *Proxy
 }
 
 func NewServer(cfg *config.Config) *Server {
 	s := &Server{
-		cfg:   cfg,
+		cfg:      cfg,
+		postgres: NewPostgres(cfg.Postgres),
+
 		//redis: NewRedis(cfg.Redis),
 	}
 
@@ -27,4 +31,5 @@ func (s *Server) Start() {
 
 func (s *Server) Close() {
 	s.proxy.Close()
+	s.postgres.Close()
 }

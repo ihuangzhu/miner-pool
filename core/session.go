@@ -3,20 +3,20 @@ package core
 import (
 	log "github.com/sirupsen/logrus"
 	"miner-pool/jsonrpc"
+	"miner-pool/model"
 	"net"
 	"time"
 )
 
 type Session struct {
-	name   string
-	worker string
-	wallet string
+	ip    string
+	miner *model.Miner
 
 	proxy *Proxy
 	conn  *net.TCPConn
 }
 
-func (ss Session) handleTCPMessage(request *jsonrpc.RequestStratum) error {
+func (ss *Session) handleTCPMessage(request *jsonrpc.RequestStratum) error {
 	// Handle RPC methods
 	switch request.Method {
 	case StratumSubmitLogin:

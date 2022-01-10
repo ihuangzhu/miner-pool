@@ -13,6 +13,13 @@
     "file": "D:\\Projects\\git\\miner-pool\\mp.log"
   },
 
+  "postgres": {
+    "address": "192.168.198.21:5432",
+    "database": "minerpool",
+    "username": "minerpool",
+    "password": "PAPCN7fcjjnJ"
+  },
+
   "redis": {
     "url": "127.0.0.1:6379",
     "password": "",
@@ -26,7 +33,9 @@
     "listen": "0.0.0.0:8008",
     "timeout": "120s",
     "maxConn": 1024,
-    "target": "0x000000007fffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "targets": "0x000000007fffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "target": "0x0000002af31dc4611873bf3f70834acdae9f0f4f534f5d60585a5f1c1a3ced1b",
+    "stateInterval": "5m",
 
     "daemon": {
       "hosts": "127.0.0.1",
@@ -42,6 +51,16 @@
   "api": {
     "enabled": true,
     "listen": "0.0.0.0:8090"
+  },
+
+  "harvester": {
+    "enabled": true,
+    "poolFee": 1.0,
+    "poolFeeAddress": "0x32B846d3F94563e0467f069eE3E5F91509D13f73",
+    "depth": 120,
+    "immatureDepth": 20,
+    "keepTxFees": true,
+    "interval": "1m"
   },
 
   "payouts": {

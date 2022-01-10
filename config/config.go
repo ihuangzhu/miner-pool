@@ -6,6 +6,7 @@ type Config struct {
 
 	Debugger *Debugger `json:"debugger"`
 	Logger   *Logger   `json:"logger"`
+	Postgres *Postgres `json:"postgres"`
 	Redis    *Redis    `json:"redis"`
 	Proxy    *Proxy    `json:"proxy"`
 	Api      *Api      `json:"api"`

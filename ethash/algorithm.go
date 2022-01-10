@@ -41,10 +41,10 @@ const (
 	epochLength        = 30000   // Blocks per epoch
 	mixBytes           = 128     // Width of mix
 	hashBytes          = 64      // Hash length in bytes
-	hashWords          = 16      // Number of 32 bit ints in a hash
-	datasetParents     = 256     // Number of parents of each dataset element
-	cacheRounds        = 3       // Number of rounds in cache production
-	loopAccesses       = 64      // Number of accesses in hashimoto loop
+	hashWords          = 16      // Block of 32 bit ints in a hash
+	datasetParents     = 256     // Block of parents of each dataset element
+	cacheRounds        = 3       // Block of rounds in cache production
+	loopAccesses       = 64      // Block of accesses in hashimoto loop
 )
 
 

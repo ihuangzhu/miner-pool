@@ -14,6 +14,14 @@ var (
 	Pow256 = math.BigPow(2, 256)
 )
 
+// 强制转换为big.Int
+func MustParseBig(num string) *big.Int {
+	if number, ok := new(big.Int).SetString(num, 10); ok {
+		return number
+	}
+	return big.NewInt(0)
+}
+
 // Hex2clean 清理十六进制数字多余字符
 func Hex2clean(hexStr string) string {
 	if len(hexStr) == 0 {
