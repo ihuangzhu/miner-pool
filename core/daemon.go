@@ -24,7 +24,7 @@ type Daemon struct {
 type Block struct {
 	ParentHash   string         `mapstructure:"parentHash"`
 	UncleHash    string         `mapstructure:"sha3Uncles"`
-	Coinbase     string         `mapstructure:"miner"`
+	Coinbase     string         `mapstructure:"worker"`
 	Root         string         `mapstructure:"stateRoot"`
 	TxHash       string         `mapstructure:"transactionsRoot"`
 	ReceiptHash  string         `mapstructure:"receiptsRoot"`
@@ -77,7 +77,7 @@ func (d *Daemon) PeerCount() (uint64, error) {
 	return peerCount, nil
 }
 
-// Coinbase delegates to `eth_coinbase` API method, and returns the miner's coinbase address
+// Coinbase delegates to `eth_coinbase` API method, and returns the worker's coinbase address
 func (d *Daemon) Coinbase() (string, error) {
 	data, err := d.sendHttpRequest("eth_coinbase", nil)
 	if err != nil {

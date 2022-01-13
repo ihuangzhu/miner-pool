@@ -9,8 +9,8 @@ import (
 )
 
 type Session struct {
-	ip    string
-	miner *model.Miner
+	ip     string
+	worker *model.Worker
 
 	proxy *Proxy
 	conn  *net.TCPConn

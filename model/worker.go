@@ -2,12 +2,13 @@ package model
 
 import "time"
 
-// Miner
-type Miner struct {
-	tableName struct{} `pg:"miners"`
+// Worker
+type Worker struct {
+	tableName struct{} `pg:"workers"`
 
 	Id               uint32    `pg:"id,pk"`
 	Miner            string    `pg:"miner"`
+	Worker           string    `pg:"worker"`
 	Hashrate         string    `pg:"hashrate"`
 	InvalidShares    uint64    `pg:"invalid_shares"`
 	StaleShares      uint64    `pg:"stale_shares"`

@@ -103,6 +103,7 @@ func (h *Harvester) harvestPendingBlocks() {
 			if block.Nonce == uBlock.Nonce {
 				orphan = false
 				block.Hash = uBlock.Hash
+				block.Type = model.BlockTypeBlock
 
 				// 获取收益
 				reward = h.calculateRewardBlock(uBlock, h.svr.daemon)
@@ -118,6 +119,8 @@ func (h *Harvester) harvestPendingBlocks() {
 					if block.Nonce == uncle.Nonce {
 						orphan = false
 						block.Hash = uncle.Hash
+						block.Type = model.BlockTypeUncle
+						block.UncleIndex = uint(uncleIndex)
 
 						// 获取收益
 						reward = h.calculateRewardUncleBlock(height.Uint64(), uncle)

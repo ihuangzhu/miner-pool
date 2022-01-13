@@ -43,14 +43,13 @@ func (p *Postgres) Close() {
 }
 
 // MinerLogin 矿工登录
-func (p *Postgres) MinerLogin(wallet string, worker string) (*model.Miner, error) {
+func (p *Postgres) MinerLogin(wallet string, workerId string) (*model.Worker, error) {
 	// 查询用户
 	var miner model.Miner
 	wallet = strings.ToLower(wallet)
-	if err := p.db.Model(&miner).Where("miner = ? and worker = ?", wallet, worker).First(); err != nil {
+	if err := p.db.Model(&miner).Where("miner = ?", wallet).First(); err != nil {
 		if err == pg.ErrNoRows {
 			miner.Miner = wallet
-			miner.Worker = worker
 			miner.CreatedAt = time.Now()
 			if _, err := p.db.Model(&miner).Insert(); err != nil {
 				return nil, err
@@ -60,7 +59,23 @@ func (p *Postgres) MinerLogin(wallet string, worker string) (*model.Miner, error
 		}
 	}
 
-	return &miner, nil
+	// 查询矿工
+	var worker model.Worker
+	wallet = strings.ToLower(wallet)
+	if err := p.db.Model(&worker).Where("miner = ? and worker = ?", wallet, workerId).First(); err != nil {
+		if err == pg.ErrNoRows {
+			worker.Miner = wallet
+			worker.Worker = workerId
+			worker.CreatedAt = time.Now()
+			if _, err := p.db.Model(&worker).Insert(); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	return &worker, nil
 }
 
 // CheckPoWExist 验证工作证明（Proof-of-Work）
@@ -87,6 +102,31 @@ func (p *Postgres) WriteShare(share *model.Share) error {
 		share.CreatedAt = time.Now()
 		if _, err := tx.Model(share).Insert(); err != nil {
 			return err
+		}
+
+		// 更新
+		switch share.Type {
+		case model.ShareTypeValid:
+			p.db.Model((*model.Miner)(nil)).
+				Set("last_valid_share_at = ?, valid_shares = valid_shares + 1", share.CreatedAt).
+				Where("miner = ?", share.Miner).Update()
+			p.db.Model((*model.Worker)(nil)).
+				Set("last_valid_share_at = ?, valid_shares = valid_shares + 1", share.CreatedAt).
+				Where("miner = ? and worker = ?", share.Miner, share.Worker).Update()
+		case model.ShareTypeStale:
+			p.db.Model((*model.Miner)(nil)).
+				Set("stale_shares = stale_shares + 1").
+				Where("miner = ?", share.Miner).Update()
+			p.db.Model((*model.Worker)(nil)).
+				Set("stale_shares = stale_shares + 1").
+				Where("miner = ? and worker = ?", share.Miner, share.Worker).Update()
+		case model.ShareTypeInvalid:
+			p.db.Model((*model.Miner)(nil)).
+				Set("invalid_shares = invalid_shares + 1").
+				Where("miner = ?", share.Miner).Update()
+			p.db.Model((*model.Worker)(nil)).
+				Set("invalid_shares = invalid_shares + 1").
+				Where("miner = ? and worker = ?", share.Miner, share.Worker).Update()
 		}
 
 		return nil

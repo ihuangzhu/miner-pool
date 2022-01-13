@@ -188,56 +188,87 @@ func (p *Proxy) handleConnection(ss *Session) error {
 	}
 }
 
+type Worker struct {
+	HR       float64
+	Online   bool
+	LastBeat time.Time
+}
+type Miner struct {
+	HR       float64
+	Online   bool
+	workers  map[string]Worker
+}
+
 func (p *Proxy) persistenceState() {
 	work := p.sender.LastWork
 	if work == nil {
 		return
 	}
 
-	var miners []struct {
-		Miner      string
-		Difficulty float64
-	}
+	// 查询
+	var shares []model.Share
 	tenMinutesAgo := time.Now().Add(-600 * time.Second)
 	err := p.svr.postgres.db.Model((*model.Share)(nil)).
-		Column("miner").
-		ColumnExpr("SUM(\"difficulty\") AS difficulty").
+		Column("miner", "worker", "difficulty", "created_at").
 		Where("created_at >= ?", tenMinutesAgo).
-		Group("miner").
-		Select(&miners)
+		Select(&shares)
 	if err != nil {
 		log.Infof("Failed to get share from backend: %v", err)
 		return
 	}
 
-	var poolDifficulty float64
-	for _, v := range miners {
-		poolDifficulty += v.Difficulty
+	// 统计
+	miners := make(map[string]Miner)
+	for _, share := range shares {
+		miner := miners[share.Miner]
+		worker := miner.workers[share.Worker]
 
-		var miner model.Miner
-		err := p.svr.postgres.db.Model(&miner).Where("miner = ?", v.Miner).First()
-		if err != nil {
-			log.Errorf("Failed to get share from backend: %v", err)
-			return
+		worker.HR += share.Difficulty
+		if worker.LastBeat.Before(share.CreatedAt) {
+			worker.LastBeat = share.CreatedAt
 		}
 
-		diff, _ := big.NewFloat(v.Difficulty).Int64()
-		miner.Hashrate = new(big.Int).Div(big.NewInt(diff), big.NewInt(600)).String()
-		if _, err := p.svr.postgres.db.Model(&miner).WherePK().Update(); err != nil {
-			log.Errorf("Failed to update miner's hashrate: %v", err)
-			return
+		if miner.workers == nil {
+			miner.workers = make(map[string]Worker)
 		}
+		miner.workers[share.Worker] = worker
+		miners[share.Miner] = miner
 	}
 
-	poolDiff, _ := big.NewFloat(poolDifficulty).Int64()
-	poolHashrate := new(big.Int).Div(big.NewInt(poolDiff), big.NewInt(600))
+	// 计算
+	online := int64(0)
+	totalHR := float64(0)
+	for wallet, miner := range miners {
+		for workerId, worker := range miner.workers {
+			worker.HR = worker.HR / 600
+			if worker.LastBeat.After(time.Now().Add(-300 * time.Second)) {
+				online ++
+				worker.Online = true
+				miner.Online = true
+			}
+
+			p.svr.postgres.db.Model((*model.Worker)(nil)).
+				Set("hashrate = ?, online = ?", worker.HR, worker.Online).
+				Where("miner = ? and worker = ?", wallet, workerId).Update()
+
+			miner.HR += worker.HR
+		}
+
+		p.svr.postgres.db.Model((*model.Miner)(nil)).
+			Set("hashrate = ?, online = ?", miner.HR, miner.Online).
+			Where("miner = ?", wallet).Update()
+
+		totalHR += miner.HR
+	}
 
 	block := util.Hex2uint64(work[3])
+	poolHashrate := big.NewFloat(totalHR)
 	networkDifficulty := util.Target2diff(work[2])
 	networkHashrate, _ := p.svr.daemon.GetNetworkHashrate(600)
 
 	p.svr.postgres.WriteState(&model.Pool{
-		Miners:            uint32(len(p.sessions)),
+		Miners:            uint32(len(miners)),
+		Workers:           uint32(online),
 		Block:             block,
 		PoolHashrate:      poolHashrate.String(),
 		NetworkHashrate:   strconv.FormatUint(networkHashrate, 10),

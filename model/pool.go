@@ -8,6 +8,7 @@ type Pool struct {
 
 	Id                uint64    `pg:"id,pk"`
 	Miners            uint32    `pg:"miners"`
+	Workers           uint32    `pg:"workers"`
 	Block             uint64    `pg:"block"`
 	PoolHashrate      string    `pg:"pool_hashrate"`
 	NetworkHashrate   string    `pg:"network_hashrate"`
