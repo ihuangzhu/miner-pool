@@ -190,13 +190,20 @@ func (p *Proxy) handleConnection(ss *Session) error {
 
 type Worker struct {
 	HR       float64
+	HR1h     float64
+	HR6h     float64
+	HR12h    float64
+	HR24h    float64
 	Online   bool
 	LastBeat time.Time
 }
 type Miner struct {
-	HR       float64
-	Online   bool
-	workers  map[string]Worker
+	HR      float64
+	HR1h    float64
+	HR6h    float64
+	HR12h   float64
+	HR24h   float64
+	workers map[string]Worker
 }
 
 func (p *Proxy) persistenceState() {
@@ -207,10 +214,10 @@ func (p *Proxy) persistenceState() {
 
 	// 查询
 	var shares []model.Share
-	tenMinutesAgo := time.Now().Add(-600 * time.Second)
+	twentyFourHoursAgo := time.Now().Add(-24 * time.Hour)
 	err := p.svr.postgres.db.Model((*model.Share)(nil)).
 		Column("miner", "worker", "difficulty", "created_at").
-		Where("created_at >= ?", tenMinutesAgo).
+		Where("created_at >= ?", twentyFourHoursAgo).
 		Select(&shares)
 	if err != nil {
 		log.Infof("Failed to get share from backend: %v", err)
@@ -223,7 +230,31 @@ func (p *Proxy) persistenceState() {
 		miner := miners[share.Miner]
 		worker := miner.workers[share.Worker]
 
-		worker.HR += share.Difficulty
+		// 十分钟
+		if share.CreatedAt.After(time.Now().Add(-10 * time.Minute)) {
+			worker.HR += share.Difficulty
+		}
+
+		// 一小时
+		if share.CreatedAt.After(time.Now().Add(-1 * time.Hour)) {
+			worker.HR1h += share.Difficulty
+		}
+
+		// 六小时
+		if share.CreatedAt.After(time.Now().Add(-6 * time.Hour)) {
+			worker.HR6h += share.Difficulty
+		}
+
+		// 十二小时
+		if share.CreatedAt.After(time.Now().Add(-12 * time.Hour)) {
+			worker.HR12h += share.Difficulty
+		}
+
+		// 二十四小时
+		if share.CreatedAt.After(time.Now().Add(-24 * time.Hour)) {
+			worker.HR24h += share.Difficulty
+		}
+
 		if worker.LastBeat.Before(share.CreatedAt) {
 			worker.LastBeat = share.CreatedAt
 		}
@@ -239,12 +270,20 @@ func (p *Proxy) persistenceState() {
 	online := int64(0)
 	totalHR := float64(0)
 	for wallet, miner := range miners {
+		onlineWorkers := uint64(0)
+		offlineWorkers := uint64(0)
 		for workerId, worker := range miner.workers {
 			worker.HR = worker.HR / 600
+			worker.HR1h = worker.HR1h / 1 / 60 / 60
+			worker.HR6h = worker.HR6h / 6 / 60 / 60
+			worker.HR12h = worker.HR12h / 12 / 60 / 60
+			worker.HR24h = worker.HR24h / 24 / 60 / 60
 			if worker.LastBeat.After(time.Now().Add(-300 * time.Second)) {
-				online ++
+				online++
+				onlineWorkers++
 				worker.Online = true
-				miner.Online = true
+			} else {
+				offlineWorkers++
 			}
 
 			p.svr.postgres.db.Model((*model.Worker)(nil)).
@@ -252,10 +291,24 @@ func (p *Proxy) persistenceState() {
 				Where("miner = ? and worker = ?", wallet, workerId).Update()
 
 			miner.HR += worker.HR
+			miner.HR1h += worker.HR1h
+			miner.HR6h += worker.HR6h
+			miner.HR12h += worker.HR12h
+			miner.HR24h += worker.HR24h
 		}
 
+		var hashrate model.Hashrate
+		hashrate.Miner = wallet
+		hashrate.Hashrate = strconv.FormatFloat(miner.HR, 'f', 10, 64)
+		hashrate.Hashrate1h = strconv.FormatFloat(miner.HR1h, 'f', 10, 64)
+		hashrate.Hashrate6h = strconv.FormatFloat(miner.HR6h, 'f', 10, 64)
+		hashrate.Hashrate12h = strconv.FormatFloat(miner.HR12h, 'f', 10, 64)
+		hashrate.Hashrate24h = strconv.FormatFloat(miner.HR24h, 'f', 10, 64)
+		hashrate.CreatedAt = time.Now()
+		p.svr.postgres.db.Model(&hashrate).Insert()
+
 		p.svr.postgres.db.Model((*model.Miner)(nil)).
-			Set("hashrate = ?, online = ?", miner.HR, miner.Online).
+			Set("hashrate = ?, online_workers = ?, offline_workers = ?", miner.HR, onlineWorkers, offlineWorkers).
 			Where("miner = ?", wallet).Update()
 
 		totalHR += miner.HR

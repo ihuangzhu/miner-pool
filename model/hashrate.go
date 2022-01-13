@@ -8,7 +8,6 @@ type Hashrate struct {
 
 	Id          uint32    `pg:"id,pk"`
 	Miner       string    `pg:"miner"`
-	Worker      string    `pg:"worker"`
 	Hashrate    string    `pg:"hashrate"`
 	Hashrate1h  string    `pg:"hashrate1h"`
 	Hashrate6h  string    `pg:"hashrate6h"`
