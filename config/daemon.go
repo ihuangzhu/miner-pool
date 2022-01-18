@@ -1,8 +1,8 @@
 package config
 
 type Daemon struct {
+	Chain         *string `json:"chain"`
 	Host          *string `json:"host"`
 	Port          *int    `json:"port"`
-	PortWs        *int    `json:"portWs"`
 	NotifyWorkUrl *string `json:"notifyWorkUrl"`
 }

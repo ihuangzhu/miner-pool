@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/mitchellh/mapstructure"
 	"io/ioutil"
 	"math/big"
@@ -64,6 +65,26 @@ func NewDaemon(cfg *config.Daemon) *Daemon {
 		cfg: cfg,
 		url: fmt.Sprintf("http://%s:%d", *cfg.Host, *cfg.Port),
 	}
+}
+
+// GetChainConfig
+func (d *Daemon) GetChainConfig() (*params.ChainConfig, error) {
+	var chainConfig *params.ChainConfig
+	switch *d.cfg.Chain {
+	case "mainnet":
+		chainConfig = params.MainnetChainConfig
+	case "rinkeby":
+		chainConfig = params.RinkebyChainConfig
+	case "goerli":
+		chainConfig = params.GoerliChainConfig
+	case "ropsten":
+		chainConfig = params.RopstenChainConfig
+	case "sepolia":
+		chainConfig = params.SepoliaChainConfig
+	default:
+		return nil, fmt.Errorf("unknown network %q", *d.cfg.Chain)
+	}
+	return chainConfig, nil
 }
 
 // PeerCount

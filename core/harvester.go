@@ -1,14 +1,14 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/go-pg/pg/v10"
 	log "github.com/sirupsen/logrus"
 	"math/big"
 	"miner-pool/model"
 	"miner-pool/util"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -69,9 +69,15 @@ func (h *Harvester) listen() {
 
 // harvestPendingBlocks
 func (h *Harvester) harvestPendingBlocks() {
+	chainConfig, err := h.svr.daemon.GetChainConfig()
+	if err != nil {
+		log.Errorf("Unable to get chain config: %v", err)
+		return
+	}
+
 	currentBlockNumber, err := h.svr.daemon.BlockNumber()
 	if err != nil {
-		log.Infof("Unable to get current blockchain height from node: %v", err)
+		log.Errorf("Unable to get current blockchain height from node: %v", err)
 		return
 	}
 
@@ -106,7 +112,8 @@ func (h *Harvester) harvestPendingBlocks() {
 				block.Type = model.BlockTypeBlock
 
 				// 获取收益
-				reward = h.calculateRewardBlock(uBlock, h.svr.daemon)
+				reward = calculateBlockRewards(chainConfig, uBlock)
+				reward.Add(reward, calculateBlockTxnFees(h.svr.daemon, uBlock))
 			}
 
 			if len(uBlock.Uncles) == 0 {
@@ -123,7 +130,7 @@ func (h *Harvester) harvestPendingBlocks() {
 						block.UncleIndex = uint(uncleIndex)
 
 						// 获取收益
-						reward = h.calculateRewardUncleBlock(height.Uint64(), uncle)
+						reward = calculateUncleBlockRewards(chainConfig, height, uncle)
 					}
 				}
 			}
@@ -211,68 +218,6 @@ func (h *Harvester) harvestPendingBlocks() {
 	}
 }
 
-// calculateRewardBlock 计算块奖励
-func (h *Harvester) calculateRewardBlock(block *Block, daemon *Daemon) *big.Int {
-	reward := new(big.Int)
-
-	// 计算固定奖励
-	height, err := strconv.ParseUint(strings.Replace(block.Number, "0x", "", -1), 16, 64)
-	if err != nil {
-		log.Error(err)
-	}
-	staticReward := GetStaticReward(height)
-	reward.Set(staticReward)
-
-	// 计算转账燃油奖励
-	gasFee := new(big.Int)
-	for key, value := range block.Transactions {
-		log.Infof("Transaction: %v => %v", key, value)
-
-		receipt, err := daemon.GetTxReceipt(value.Hash)
-		if err != nil {
-			log.Error(err)
-		}
-
-		gasUsed := big.NewInt(util.Hex2int64(receipt.GasUsed))
-		gasPrice := big.NewInt(util.Hex2int64(value.GasPrice))
-		txnFee := new(big.Int).Mul(gasUsed, gasPrice)
-		gasFee.Add(gasFee, txnFee)
-	}
-	gasUsed := big.NewInt(util.Hex2int64(block.GasUsed))
-	baseFeePerGas := big.NewInt(util.Hex2int64(block.BaseFee))
-	gasBurnt := new(big.Int).Mul(gasUsed, baseFeePerGas)
-	gasReward := new(big.Int).Sub(gasFee, gasBurnt)
-	reward.Add(reward, gasReward)
-	log.Infof("Transaction gas fee total: %v wei, burnt: %v wei, remaing: %v wei", gasFee, gasBurnt, gasReward)
-
-	// 计算叔块奖励
-	staticUncleReward := new(big.Int).Div(staticReward, new(big.Int).SetInt64(32))
-	uncleReward := big.NewInt(0).Mul(staticUncleReward, big.NewInt(int64(len(block.Uncles))))
-	reward.Add(reward, uncleReward)
-	log.Infof("Uncle block reward: %v wei", uncleReward)
-
-	return reward
-}
-
-// calculateRewardUncleBlock 计算叔块奖励
-func (h *Harvester) calculateRewardUncleBlock(height uint64, uncle *Block) *big.Int {
-	reward := big.NewInt(0)
-	staticReward := GetStaticReward(height)
-	uncleHeight, err := strconv.ParseUint(strings.Replace(uncle.Number, "0x", "", -1), 16, 64)
-	if err != nil {
-		log.Print(err)
-	}
-
-	reward = staticReward
-	k := height - uncleHeight
-	reward.Mul(big.NewInt(int64(8-k)), reward)
-	reward.Div(reward, big.NewInt(8))
-
-	log.Infof("Uncle block reward: %v wei", reward)
-
-	return reward
-}
-
 func (h *Harvester) Close() {
 	close(h.quit)
 
@@ -280,20 +225,66 @@ func (h *Harvester) Close() {
 	h.wg.Wait()
 }
 
-// For blocks 0 -> 4,369,999 the reward was 5 ETH.
-// For blocks 4,370,000 -> 7,279,999 the reward was 3 ETH.
-// For blocks 7,280,000 onward the reward is 2 ETH.
-const (
-	ByzantiumHardFork      = 4370000
-	ConstantinopleHardFork = 7280000
+// Some weird constants to avoid constant memory allocs for them.
+var (
+	big8  = big.NewInt(8)
+	big32 = big.NewInt(32)
 )
 
-func GetStaticReward(height uint64) *big.Int {
-	if height < ByzantiumHardFork {
-		return math.MustParseBig256("5000000000000000000")
-	} else if height < ConstantinopleHardFork {
-		return math.MustParseBig256("3000000000000000000")
-	} else {
-		return math.MustParseBig256("2000000000000000000")
+func selectStaticBlockReward(config *params.ChainConfig, blockNumber *big.Int) *big.Int {
+	blockReward := ethash.FrontierBlockReward
+	if config.IsByzantium(blockNumber) {
+		blockReward = ethash.ByzantiumBlockReward
 	}
+	if config.IsConstantinople(blockNumber) {
+		blockReward = ethash.ConstantinopleBlockReward
+	}
+	return blockReward
+}
+
+func calculateBlockRewards(config *params.ChainConfig, block *Block) *big.Int {
+	// Select the correct block reward based on chain progression
+	blockReward := selectStaticBlockReward(config, hexutil.MustDecodeBig(block.Number))
+
+	// Calculate the block for the uncles inclusion reward
+	uncleInclusionReward := new(big.Int).Mul(big.NewInt(int64(len(block.Uncles))), new(big.Int).Div(blockReward, big32))
+
+	// Accumulate the total rewards
+	reward := new(big.Int).Set(blockReward)
+	reward.Add(reward, uncleInclusionReward)
+	return reward
+}
+
+func calculateBlockTxnFees(daemon *Daemon, block *Block) *big.Int {
+	gasFee := big.NewInt(0)
+	for _, value := range block.Transactions {
+		receipt, err := daemon.GetTxReceipt(value.Hash)
+		if err != nil {
+			log.Errorf("Get transaction receipt err: %v", err)
+		}
+
+		gasUsed := hexutil.MustDecodeBig(receipt.GasUsed)
+		gasPrice := hexutil.MustDecodeBig(value.GasPrice)
+		gasFee.Add(gasFee, new(big.Int).Mul(gasUsed, gasPrice))
+	}
+	gasUsed := hexutil.MustDecodeBig(block.GasUsed)
+	baseFeePerGas := hexutil.MustDecodeBig(block.BaseFee)
+	gasBurnt := new(big.Int).Mul(gasUsed, baseFeePerGas)
+	gasReward := new(big.Int).Sub(gasFee, gasBurnt)
+	log.Infof("Transaction gas fee total: %v wei, burnt: %v wei, remaing: %v wei", gasFee, gasBurnt, gasReward)
+
+	return gasReward
+}
+
+func calculateUncleBlockRewards(config *params.ChainConfig, blockNumber *big.Int, uncle *Block) *big.Int {
+	// Select the correct block reward based on chain progression
+	blockReward := selectStaticBlockReward(config, blockNumber)
+
+	// Accumulate the total rewards
+	reward := new(big.Int)
+	reward.Add(hexutil.MustDecodeBig(uncle.Number), big8)
+	reward.Sub(reward, blockNumber)
+	reward.Mul(reward, blockReward)
+	reward.Div(reward, big8)
+	return reward
 }

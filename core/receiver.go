@@ -32,7 +32,8 @@ func StartReceiver(proxy *Proxy) *Receiver {
 func (r *Receiver) listen() {
 	defer r.wg.Done()
 
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != "POST" {
 			log.Print("Invalid HTTP method")
 			return
@@ -57,6 +58,7 @@ func (r *Receiver) listen() {
 		log.Printf("Received notification: %v", notification)
 	})
 
+	r.srv.Handler = mux
 	if err := r.srv.ListenAndServe(); err != http.ErrServerClosed {
 		// unexpected error. port in use?
 		log.Fatalf("ListenAndServe(): %v", err)

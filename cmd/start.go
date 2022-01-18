@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"miner-pool/config"
 	"miner-pool/core"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -61,24 +63,10 @@ func runDaemon() {
 }
 
 func runServer(cfg *config.Config, interruptChan chan os.Signal) error {
-	//initDebug(cfg)
-	//initLogger(cfg)
-
-
-	log.SetFormatter(&log.TextFormatter{})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.DebugLevel)
-
-	//sender := core.NewSender()
-	//sender.Attach(&core.Session{name: "t1"})
-	//receiver := core.StartReceiver(cfg.Daemon, sender)
-	//defer receiver.Close()
+	initDebug(cfg.Debugger)
+	initLogger(cfg.Logger)
 
 	server := core.NewServer(cfg)
-	//if err != nil {
-	//	log.Errorf("Fail to instance tcp server: %v", err)
-	//	return err
-	//}
 	defer server.Close()
 
 	server.Start()
@@ -91,30 +79,29 @@ func runServer(cfg *config.Config, interruptChan chan os.Signal) error {
 	return nil
 }
 
-//
-//func initDebug(cfg *config.Config) {
-//	if *cfg.Debug.Enable {
-//		go http.ListenAndServe(*cfg.Debug.Listen, nil)
-//	}
-//}
-//
-//func initLogger(cfg *config.Config) {
-//	// Log as JSON instead of the default ASCII formatter.
-//	log.SetFormatter(&log.TextFormatter{})
-//
-//	// Output to stdout instead of the default stderr
-//	log.SetOutput(os.Stdout)
-//
-//	if *cfg.Log.Mode == "file" {
-//		// You could set this to any `io.Writer` such as a file
-//		file, err := os.OpenFile(*cfg.Log.Filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-//		if err == nil {
-//			log.SetOutput(file)
-//		} else {
-//			log.Info("Failed to log to file, using default stderr")
-//		}
-//	}
-//
-//	// Only log the warning severity or above.
-//	log.SetLevel(log.Level(*cfg.Log.Level))
-//}
+func initDebug(cfg *config.Debugger) {
+	if *cfg.Enable {
+		go http.ListenAndServe(*cfg.Listen, nil)
+	}
+}
+
+func initLogger(cfg *config.Logger) {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.TextFormatter{})
+
+	// Output to stdout instead of the default stderr
+	log.SetOutput(os.Stdout)
+
+	if *cfg.Mode == "file" {
+		// You could set this to any `io.Writer` such as a file
+		file, err := os.OpenFile(*cfg.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err == nil {
+			log.SetOutput(file)
+		} else {
+			log.Info("Failed to log to file, using default stderr")
+		}
+	}
+
+	// Only log the warning severity or above.
+	log.SetLevel(log.Level(*cfg.Level))
+}

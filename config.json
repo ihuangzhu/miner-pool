@@ -3,14 +3,14 @@
   "name": "main",
 
   "debugger": {
-    "enable": false,
+    "enable": true,
     "listen": "0.0.0.0:6060"
   },
 
   "logger": {
     "level": 5,
     "mode": "console",
-    "file": "D:\\Projects\\git\\miner-pool\\mp.log"
+    "file": "/data/mp.log"
   },
 
   "postgres": {
@@ -26,15 +26,13 @@
     "timeout": "120s",
     "maxConn": 1024,
     "targets": "0x000000007fffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-    "targetss": "0x0000002af31dc4611873bf3f70834acdae9f0f4f534f5d60585a5f1c1a3ced1b",
-    "target": "0x0000002d54def2d8b891c1687030b442f96862e496fced25fee34342445c9e5d",
+    "target": "0x0000002af31dc4611873bf3f70834acdae9f0f4f534f5d60585a5f1c1a3ced1b",
     "stateInterval": "1m",
 
     "daemon": {
-      "hosts": "127.0.0.1",
+      "chain": "sepolia",
       "host": "192.168.198.21",
       "port": 8545,
-      "portWs": 8546,
       "notifyWorkUrl": "0.0.0.0:8107"
     },
 
@@ -56,7 +54,5 @@
     "interval": "1m"
   },
 
-  "payouts": {
-
-  }
+  "payout": {}
 }
